@@ -1,4 +1,11 @@
-import React, { useEffect, useMemo, useState, useRef } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+  useRef,
+  useCallback
+} from "react";
+
 import {
   Button,
   Paper,
@@ -35,7 +42,6 @@ import {
 import { getStateColumns } from "./state.columns";
 
 const StatePage = () => {
-
   const gridRef = useRef(null);
 
   const [states, setStates] = useState([]);
@@ -43,12 +49,9 @@ const StatePage = () => {
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const emptyForm = {
-    countryId: "",
-    name: "",
-    status: true
-  };
+  const [search, setSearch] = useState("");
 
+  const emptyForm = { countryId: "", name: "", status: true };
   const [formValues, setFormValues] = useState(emptyForm);
 
   const [snackbar, setSnackbar] = useState({
@@ -65,23 +68,32 @@ const StatePage = () => {
 
   const isEdit = Boolean(editingId);
 
-  const actionTextMap = {
-    save: "Do you want to save this record?",
-    update: "Do you want to update this record?",
-    delete: "This action cannot be undone. Delete this record?",
-    reset: "Do you want to reset the form?"
-  };
+  // ---------------- COUNTRY MAP ----------------
+  const countryMap = useMemo(() => {
+    const map = {};
+    countries.forEach((c) => {
+      map[c.countryId] = c.name;
+    });
+    return map;
+  }, [countries]);
 
   // ---------------- FETCH ----------------
-
   const fetchStates = async () => {
-    const res = await getStates();
-    setStates(res.data || []);
+    try {
+      const res = await getStates();
+      setStates(res.data || []);
+    } catch {
+      showMessage("Failed to load states", "error");
+    }
   };
 
   const fetchCountries = async () => {
-    const res = await getCountries();
-    setCountries(res.data || []);
+    try {
+      const res = await getCountries();
+      setCountries(res.data || []);
+    } catch {
+      showMessage("Failed to load countries", "error");
+    }
   };
 
   useEffect(() => {
@@ -89,25 +101,51 @@ const StatePage = () => {
     fetchCountries();
   }, []);
 
-  // ---------------- SUBMIT ----------------
+  // ---------------- ACTION RENDERER ----------------
+  const ActionRenderer = useCallback(
+    (props) => {
+      const row = props.data;
 
-  const onSubmit = (data) => {
-    setConfirm({
-      open: true,
-      type: isEdit ? "update" : "save",
-      data
-    });
-  };
+      return (
+        <Stack direction="row" spacing={1}>
+          <Button
+            size="small"
+            variant="contained"
+            onClick={() => handleEdit(row)}
+          >
+            Edit
+          </Button>
 
-  // ---------------- CONFIRM ----------------
+          <Button
+            size="small"
+            color="error"
+            variant="outlined"
+            onClick={() => handleDelete(row.id)}
+          >
+            Delete
+          </Button>
+        </Stack>
+      );
+    },
+    []
+  );
 
+  const columnDefs = useMemo(
+    () => getStateColumns(countryMap, ActionRenderer),
+    [countryMap, ActionRenderer]
+  );
+
+  // ---------------- CONFIRM HANDLER ----------------
   const handleConfirm = async () => {
     const { type, data } = confirm;
     setLoading(true);
 
     try {
       if (type === "save") {
-        await createState({ ...data, countryId: Number(data.countryId) });
+        await createState({
+          ...data,
+          countryId: Number(data.countryId)
+        });
         showMessage("✔ State saved successfully");
       }
 
@@ -120,37 +158,40 @@ const StatePage = () => {
       }
 
       if (type === "delete") {
-        await deleteState(confirm.data);
+        await deleteState(data);
         showMessage("✔ State deleted successfully");
       }
 
       if (type === "reset") {
         handleReset(true);
-        showMessage("✔ Form reset successfully");
       }
 
-      fetchStates();
-      handleReset(true);
+      await fetchStates();
 
-    } catch {
-      showMessage("❌ Something went wrong", "error");
+      if (type === "save" || type === "update") {
+        handleReset(true);
+      }
+
+    } catch (err) {
+      console.error(err);
+      showMessage("❌ Operation failed", "error");
     }
 
     setLoading(false);
     setConfirm({ open: false, type: "", data: null });
   };
 
-  // ---------------- MESSAGE ----------------
-
-  const showMessage = (message, severity = "success") => {
-    setSnackbar({ open: true, message, severity });
+  // ---------------- FORM ----------------
+  const onSubmit = (data) => {
+    setConfirm({
+      open: true,
+      type: isEdit ? "update" : "save",
+      data
+    });
   };
-
-  // ---------------- EDIT ----------------
 
   const handleEdit = (row) => {
     setEditingId(row.id);
-
     setFormValues({
       countryId: row.countryId,
       name: row.name,
@@ -160,7 +201,9 @@ const StatePage = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // ---------------- RESET ----------------
+  const handleDelete = (id) => {
+    setConfirm({ open: true, type: "delete", data: id });
+  };
 
   const handleReset = (force = false) => {
     if (!force) {
@@ -172,53 +215,14 @@ const StatePage = () => {
     setFormValues(emptyForm);
   };
 
-  // ---------------- DELETE ----------------
-
-  const handleDelete = (id) => {
-    setConfirm({ open: true, type: "delete", data: id });
-  };
-
-  // ---------------- ACTION COLUMN ----------------
-
-  const ActionRenderer = (props) => {
-    const row = props.data;
-
-    return (
-      <Stack direction="row" spacing={1}>
-        <Button size="small" variant="contained" onClick={() => handleEdit(row)}>
-          Edit
-        </Button>
-
-        <Button size="small" color="error" variant="outlined" onClick={() => handleDelete(row.id)}>
-          Delete
-        </Button>
-      </Stack>
-    );
-  };
-
-  const columnDefs = useMemo(
-    () => getStateColumns(countries, ActionRenderer),
-    [countries]
-  );
-
-  // ---------------- EXPORT ----------------
-
-  const exportCSV = () => {
-    gridRef.current?.exportCSV();
-  };
-
-  const exportExcel = () => {
-    gridRef.current?.exportExcel();
-  };
-
+  // ---------------- EXPORT PDF ----------------
   const exportPDF = () => {
     const doc = new jsPDF();
-    const data = gridRef.current?.getData() || [];
 
-    const countryMap = {};
-    countries.forEach(c => {
-      countryMap[c.countryId] = c.name;
-    });
+    doc.text("State List Report", 14, 10);
+    doc.text(new Date().toLocaleString(), 14, 16);
+
+    const data = gridRef.current?.getData() || [];
 
     const rows = data.map((d, i) => [
       i + 1,
@@ -228,40 +232,41 @@ const StatePage = () => {
     ]);
 
     autoTable(doc, {
+      startY: 20,
       head: [["#", "Country", "State", "Status"]],
-      body: rows
+      body: rows,
+      styles: { fontSize: 10 },
+      headStyles: { fillColor: [22, 160, 133] }
     });
 
     doc.save("states.pdf");
   };
 
   // ---------------- SEARCH ----------------
+  useEffect(() => {
+    const t = setTimeout(() => {
+      gridRef.current?.setSearch(search);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
 
-  const onSearch = (e) => {
-    gridRef.current?.setSearch(e.target.value);
+  // ---------------- MESSAGE ----------------
+  const showMessage = (message, severity = "success") => {
+    setSnackbar({ open: true, message, severity });
   };
-
-  const submitLabel = loading
-    ? ""
-    : isEdit
-    ? "Update"
-    : "Save";
 
   return (
     <Box sx={{ p: 4, background: "#f4f6f9", minHeight: "100vh" }}>
-
       <Paper sx={{ p: 3 }}>
-
         <Typography variant="h6" mb={2}>
           {isEdit ? "Edit State" : "Add State"}
         </Typography>
 
         <MasterForm
-          key={editingId || "new"}   // 🔥 IMPORTANT
+          key={editingId || "new"}
           schema={stateSchema}
           defaultValues={formValues}
           onSubmit={onSubmit}
-          isEdit={isEdit}
           fields={[
             {
               name: "countryId",
@@ -281,7 +286,13 @@ const StatePage = () => {
           extraButtons={
             <Stack direction="row" spacing={2}>
               <Button variant="contained" type="submit" disabled={loading}>
-                {loading ? <CircularProgress size={20} /> : submitLabel}
+                {loading ? (
+                  <CircularProgress size={20} />
+                ) : isEdit ? (
+                  "Update"
+                ) : (
+                  "Save"
+                )}
               </Button>
 
               <Button variant="outlined" onClick={handleReset}>
@@ -296,19 +307,33 @@ const StatePage = () => {
           <Typography variant="h6">State List</Typography>
 
           <Stack direction="row" spacing={2}>
-            <TextField size="small" placeholder="Search..." onChange={onSearch} />
+            <TextField
+              size="small"
+              placeholder="Search..."
+              onChange={(e) => setSearch(e.target.value)}
+            />
 
-            <Button onClick={exportCSV}>CSV</Button>
-            <Button onClick={exportExcel}>Excel</Button>
-            <Button onClick={exportPDF}>PDF</Button>
+            <Button onClick={() => gridRef.current.exportCSV()}>
+              CSV
+            </Button>
+            <Button onClick={() => gridRef.current.exportExcel()}>
+              Excel
+            </Button>
+            <Button onClick={exportPDF}>
+              PDF
+            </Button>
           </Stack>
         </Box>
 
-        <MasterGrid ref={gridRef} rowData={states} columnDefs={columnDefs} />
-
+        <MasterGrid
+          ref={gridRef}
+          rowData={states}
+          columnDefs={columnDefs}
+          countryMap={countryMap}
+        />
       </Paper>
 
-      {/* DIALOG */}
+      {/* CONFIRM DIALOG */}
       <Dialog
         open={confirm.open}
         maxWidth="xs"
@@ -325,13 +350,19 @@ const StatePage = () => {
         </DialogTitle>
 
         <DialogContent>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box display="flex" alignItems="center" gap={1.5}>
             {confirm.type === "delete" && (
               <WarningAmberIcon color="error" />
             )}
 
             <Typography>
-              {actionTextMap[confirm.type]}
+              {confirm.type === "delete"
+                ? "This action cannot be undone. Delete this record?"
+                : confirm.type === "update"
+                ? "Do you want to update this record?"
+                : confirm.type === "save"
+                ? "Do you want to save this record?"
+                : "Do you want to reset the form?"}
             </Typography>
           </Box>
         </DialogContent>
@@ -380,7 +411,6 @@ const StatePage = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
-
     </Box>
   );
 };

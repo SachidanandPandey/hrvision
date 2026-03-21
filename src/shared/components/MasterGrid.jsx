@@ -1,10 +1,14 @@
-import React, { forwardRef, useRef, useMemo, useImperativeHandle } from "react";
+import React, {
+  forwardRef,
+  useRef,
+  useMemo,
+  useImperativeHandle
+} from "react";
 import { AgGridReact } from "ag-grid-react";
 import * as XLSX from "xlsx";
 
 const MasterGrid = forwardRef(
-  ({ rowData = [], columnDefs = [] }, ref) => {
-
+  ({ rowData = [], columnDefs = [], loading = false, countryMap = {} }, ref) => {
     const gridApiRef = useRef(null);
 
     const defaultColDef = useMemo(() => ({
@@ -18,37 +22,35 @@ const MasterGrid = forwardRef(
 
     const onGridReady = (params) => {
       gridApiRef.current = params.api;
-      params.api.sizeColumnsToFit();
     };
 
     useImperativeHandle(ref, () => ({
-
-      // ✅ CSV Export
       exportCSV: () => {
         gridApiRef.current?.exportDataAsCsv();
       },
 
-      // ✅ Excel Export
       exportExcel: () => {
         const data = [];
         gridApiRef.current?.forEachNode((node) => {
-          data.push(node.data);
+          const d = node.data;
+          data.push({
+            ID: d.id,
+            Country: countryMap[d.countryId] || "",
+            Name: d.name,
+            Status: d.status ? "Active" : "Inactive"
+          });
         });
 
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-
-        XLSX.utils.book_append_sheet(workbook, worksheet, "States");
-
-        XLSX.writeFile(workbook, "states.xlsx");
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "States");
+        XLSX.writeFile(wb, "states.xlsx");
       },
 
-      // ✅ SEARCH
       setSearch: (value) => {
         gridApiRef.current?.setGridOption("quickFilterText", value);
       },
 
-      // ✅ GET DATA (for PDF)
       getData: () => {
         const data = [];
         gridApiRef.current?.forEachNode((node) => {
@@ -56,7 +58,6 @@ const MasterGrid = forwardRef(
         });
         return data;
       }
-
     }));
 
     return (
@@ -76,13 +77,12 @@ const MasterGrid = forwardRef(
           pagination
           paginationPageSize={10}
           animateRows
+          overlayLoadingTemplate={"<span>Loading...</span>"}
+          loadingOverlayComponentParams={{ loadingMessage: "Loading..." }}
         />
       </div>
     );
   }
 );
-
-
-
 
 export default MasterGrid;

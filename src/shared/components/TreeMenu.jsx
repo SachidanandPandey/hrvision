@@ -1,143 +1,148 @@
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { UncontrolledTreeEnvironment, Tree, StaticTreeDataProvider } from 'react-complex-tree'; // Ensure proper import
-import 'react-complex-tree/lib/style-modern.css'; // Critical for visibility
+import React, { useState } from "react";
+import { Link } from "react-router-dom";
+import {
+  UncontrolledTreeEnvironment,
+  Tree
+} from "react-complex-tree";
+import "react-complex-tree/lib/style-modern.css";
 
-// Flat tree structure (must have 'index', 'data', 'children' where needed)
+// ---------------- TREE DATA ----------------
 const treeItems = [
   {
-    index: 'root',
+    index: "root",
     hasChildren: true,
-    children: ['masters', 'leave', 'payroll', 'vendorportal'],
-    data: 'HRVision',
-    canMove: false,
-    isFolder: true,
+    children: ["masters", "leave", "payroll", "vendorportal"],
+    data: "HRVision",
+    isFolder: true
   },
   {
-    index: 'masters',
+    index: "masters",
     hasChildren: true,
-    children: ['state', 'employee', 'company','country','city','department'],
-    data: 'Masters',
-    canMove: false,
-    isFolder: true,
+    children: [
+      "state",
+      "employee",
+      "company",
+      "country",
+      "city",
+      "department",
+      "designation",
+      "division",
+      "employeeGrade"
+    ],
+    data: "Masters",
+    isFolder: true
+  },
+
+  // ---------- MASTERS ----------
+  {
+    index: "state",
+    data: <Link to="/masters/state">State Master</Link>
   },
   {
-    index: 'state',
-    data: <Link to="/masters/state">State Master</Link>,
-    canMove: false,
+    index: "employee",
+    data: <Link to="/masters/employee">Employee Master</Link>
   },
   {
-    index: 'employee',
-    data: <Link to="/masters/employee">Employee Master</Link>,
-    canMove: false,
+    index: "country",
+    data: <Link to="/masters/country">Country Master</Link>
   },
   {
-    index: 'country',
-    data: <Link to="/masters/country">Country Master</Link>,
-    canMove: false,
-  },
-   {
-    index: 'city',
-    data: <Link to="/masters/city">Country Master</Link>,
-    canMove: false,
+    index: "city",
+    data: <Link to="/masters/city">City Master</Link> // ✅ FIXED
   },
   {
-    index: 'department',
-    data: <Link to="/masters/department">Department Master</Link>,
-    canMove: false,
-  }, 
-    {
-    index: 'designation',
-    data: <Link to="/masters/designation">Designation Master</Link>,
-    canMove: false,
+    index: "department",
+    data: <Link to="/masters/department">Department Master</Link>
   },
   {
-    index: 'division',
-    data: <Link to="/masters/division">Division Master</Link>,
-    canMove: false,
-  },
-   {
-    index: 'employeeGrade',
-    data: <Link to="/masters/employeeGrade">EmployeeGrade Master</Link>,
-    canMove: false,
+    index: "designation",
+    data: <Link to="/masters/designation">Designation Master</Link>
   },
   {
-    index: 'company',
-    data: <Link to="/masters/company">Company Master</Link>,
-    canMove: false,
+    index: "division",
+    data: <Link to="/masters/division">Division Master</Link>
   },
   {
-    index: 'leave',
+    index: "employeeGrade",
+    data: <Link to="/masters/employeeGrade">Employee Grade</Link>
+  },
+  {
+    index: "company",
+    data: <Link to="/masters/company">Company Master</Link>
+  },
+
+  // ---------- LEAVE ----------
+  {
+    index: "leave",
     hasChildren: true,
-    children: ['leave-application'],
-    data: 'Leave Management',
-    canMove: false,
-    isFolder: true,
+    children: ["leave-application"],
+    data: "Leave Management",
+    isFolder: true
   },
   {
-    index: 'leave-application',
-    data: <Link to="/leave/application">Leave Application</Link>,
-    canMove: false,
+    index: "leave-application",
+    data: <Link to="/leave/application">Leave Application</Link>
   },
+
+  // ---------- PAYROLL ----------
   {
-    index: 'payroll',
+    index: "payroll",
     hasChildren: true,
-    children: ['salary-slip'],
-    data: 'Payroll',
-    canMove: false,
-    isFolder: true,
+    children: ["salary-slip"],
+    data: "Payroll",
+    isFolder: true
   },
   {
-    index: 'salary-slip',
-    data: <Link to="/payroll/salary">Salary Slip</Link>,
-    canMove: false,
+    index: "salary-slip",
+    data: <Link to="/payroll/salary">Salary Slip</Link>
   },
+
+  // ---------- VENDOR ----------
   {
-    index: 'vendorportal',
+    index: "vendorportal",
     hasChildren: true,
-    children: ['vendor-dashboard'],
-    data: 'Vendor Portal',
-    canMove: false,
-    isFolder: true,
+    children: ["vendor-dashboard"],
+    data: "Vendor Portal",
+    isFolder: true
   },
   {
-    index: 'vendor-dashboard',
-    data: <Link to="/vendorportal/dashboard">Vendor Dashboard</Link>,
-    canMove: false,
-  },
+    index: "vendor-dashboard",
+    data: <Link to="/vendorportal/dashboard">Vendor Dashboard</Link>
+  }
 ];
 
+// ---------------- COMPONENT ----------------
 const TreeMenu = () => {
-  const [viewState, setViewState] = useState({ expanded: ['root'] });
-  const [treeDataProvider, setTreeDataProvider] = useState(null);
-
-  // Initialize the tree data provider
-  useEffect(() => {
-    const provider = new StaticTreeDataProvider(treeItems); // Initialize correctly
-    setTreeDataProvider(provider);
-  }, []);
-
-  // Ensure that treeDataProvider is ready before rendering the tree
-  if (!treeDataProvider) {
-    return <div>Loading...</div>; // Show loading until provider is ready
-  }
+  const [viewState, setViewState] = useState({
+    expanded: ["root"]
+  });
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto', padding: '8px', background: '#f8f9fa' }}>
+    <div
+      style={{
+        height: "100%",
+        overflowY: "auto",
+        padding: 8,
+        background: "#f8f9fa"
+      }}
+    >
       <UncontrolledTreeEnvironment
         items={treeItems}
-        getItemTitle={(item) => (typeof item.data === 'string' ? item.data : item.data.props.children || 'Item')}
-        viewState={viewState}  // Control expanded state
+        getItemTitle={(item) =>
+          typeof item.data === "string"
+            ? item.data
+            : item.data?.props?.children || "Item"
+        }
+        viewState={viewState}
         renderItemTitle={({ title }) => title}
-        // Correct callbacks to handle expand/collapse
         onExpandItem={(item) => {
-          setViewState((prevState) => ({
-            expanded: [...prevState.expanded, item.index],
+          setViewState((prev) => ({
+            expanded: [...prev.expanded, item.index]
           }));
         }}
         onCollapseItem={(item) => {
-          setViewState((prevState) => ({
-            expanded: prevState.expanded.filter((index) => index !== item.index),
+          setViewState((prev) => ({
+            expanded: prev.expanded.filter((i) => i !== item.index)
           }));
         }}
       >
@@ -145,7 +150,6 @@ const TreeMenu = () => {
           treeId="hrvision-tree"
           rootItem="root"
           treeLabel="HRVision Navigation Menu"
-          getItemTitle={(item) => (typeof item.data === 'string' ? item.data : item.data.props.children || 'Item')}
         />
       </UncontrolledTreeEnvironment>
     </div>

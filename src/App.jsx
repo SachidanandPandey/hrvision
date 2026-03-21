@@ -5,6 +5,7 @@ import MainLayout from './layouts/MainLayout';
 import Home from './pages/Home';
 
 import StatePage from './features/masters/state/StatePage';
+import CityPage from './features/masters/city/CityPage';
 /*
 import CountryMaster from './features/masters/countryMaster';
 import CityMaster from './features/masters/CityMaster';
@@ -24,6 +25,8 @@ const App = () => {
           <Route path="/" element={<Home />} />
    
            <Route path="/masters/state" element={<StatePage />} />
+            <Route path="/masters/city" element={<CityPage />} />
+           
          
 
            

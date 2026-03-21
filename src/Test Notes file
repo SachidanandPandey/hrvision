@@ -1,0 +1,246 @@
+1. Project Structure
+
+✅ The structure is clear and modular:
+
+features/masters/state → StatePage, schema, columns, service.
+shared/components → reusable components (MasterForm, MasterGrid, LeftPanel).
+layouts → MainLayout for consistent UI.
+services/apiClient.js → central Axios client.
+app/store.js → Redux store + configuration.
+
+💡 Improvement: You could move getStateColumns from store.js to features/masters/state/state.columns.js for better separation of concerns.
+
+2. StatePage Component
+✅ Strengths:
+Clean separation of form, grid, and dialogs.
+Handles CRUD operations using stateService.
+Proper use of React hooks (useState, useEffect, useMemo, useCallback).
+PDF/Excel/CSV exports implemented.
+Loading states and snackbar feedback implemented.
+⚠️ Issues & Improvements:
+Loading state not disabling buttons consistently
+MasterForm uses isUpdate and loading for submit label but your StatePage passes loading differently in extraButtons.
+Fix: unify isEdit and loading for MasterForm to reflect the correct label.
+
+MasterGrid search not working
+
+setSearch: (value) => {
+  gridApiRef.current?.setGridOption("quickFilterText", value);
+}
+
+❌ setGridOption is not a function.
+✅ Correct approach:
+
+gridApiRef.current?.setQuickFilter(value);
+Export PDF uses gridRef.current.getData()
+Ensure MasterGrid exposes getData via useImperativeHandle. ✅ Already done. Good.
+Reset / Cancel button logic
+Currently, Cancel button in MasterForm does handleReset.
+In StatePage, Cancel triggers reset confirmation → redundant.
+Suggestion: If editing → show Cancel, else → show Reset.
+ActionRenderer
+Works fine. Could disable buttons during loading to prevent multiple clicks.
+FormField components
+You have both inline form fields and MasterForm component.
+Consider standardizing all forms to MasterForm to avoid code duplication.
+Error handling in API calls
+Currently generic Failed to load states.
+Suggestion: show err.message for debugging.
+Pagination page size
+paginationPageSize hardcoded to 10 in MasterGrid. Could be appConfig.paginationSize.
+Unused imports
+Some icons and jsPDF imports are fine, but check WarningAmberIcon only used in delete dialog.
+Minor styling issues
+Inline styles in Navbar and TreeMenu could be replaced with MUI sx prop for consistency.
+3. MasterGrid Component
+
+✅ Good: Exposes exportCSV, exportExcel, getData, setSearch via ref.
+
+⚠️ Issues:
+
+setSearch uses setGridOption (should be setQuickFilter).
+You are using paginationPageSize={10} → could use appConfig.paginationSize.
+paginationPageSize={appConfig.paginationSize}
+4. MasterForm Component
+
+✅ Very reusable. Handles:
+
+text, select, switch fields
+validation via yup
+submit and reset buttons with loading state
+
+⚠️ Issue:
+
+isUpdate is required for dynamic label but StatePage doesn’t pass it.
+Fix: pass isUpdate={isEdit} to MasterForm.
+5. TreeMenu / LeftPanel
+
+✅ Works, renders links.
+
+⚠️ Issue:
+
+react-complex-tree data provider can be simplified; currently mixing React elements and strings.
+Suggestion: convert all tree node data to strings, then render as <Link> inside renderItemTitle.
+6. API Service (stateService.js)
+
+✅ Simple and clean. Uses apiClient.
+
+Could add try/catch here if you want more granular error messages.
+7. Redux (menuSlice.js)
+
+✅ Basic and works. Tracks active menu/submenu.
+
+Could extend for more modules in future.
+8. App.jsx / Routing
+
+✅ Proper use of Router, MainLayout, and Routes.
+
+⚠️ Suggestion:
+
+Wrap all protected routes in a PrivateRoute component later for authentication.
+9. Recommended Fixes Summary
+Fix MasterGrid search:
+setSearch: (value) => {
+  gridApiRef.current?.setQuickFilter(value);
+}
+Pass isUpdate to MasterForm:
+<MasterForm
+  key={editingId || 'new'}
+  schema={stateSchema}
+  defaultValues={formValues}
+  onSubmit={onSubmit}
+  isUpdate={isEdit}   // <--- add this
+  fields={[ ... ]}
+  extraButtons={ ... }
+/>
+Disable grid buttons during loading
+In ActionRenderer:
+<Button size="small" variant="contained" onClick={() => handleEdit(row)} disabled={loading}>Edit</Button>
+<Button size="small" color="error" variant="outlined" onClick={() => handleDelete(row.id)} disabled={loading}>Delete</Button>
+Use appConfig for pagination:
+paginationPageSize={appConfig.paginationSize}
+Optional: unify reset/cancel logic in StatePage and MasterForm.
+✅ Overall
+Code is modular, clean, and functional.
+Only minor issues with search, form labels, and loading states.
+After applying the above fixes, your first Master page (StatePage) is production-ready for a free version ERP module.
+
+
+
+
+
+Perfect! I understand — you want to standardize your project structure and workflow so that juniors can follow the same pattern for all modules like Masters, Leave, Attendance, Payroll, Training, etc.
+
+Here’s a clear structure diagram and guideline you can use as a reference:
+
+1. Recommended Folder Structure
+HRVISION/
+├── public/
+│   └── index.html, favicon.ico
+├── src/
+│   ├── app/
+│   │   ├── store.js          # Redux store & appConfig
+│   │   └── config/           # Global configs
+│   │       └── appConfig.js
+│   │
+│   ├── features/             # All functional modules
+│   │   ├── masters/
+│   │   │   ├── state/
+│   │   │   │   ├── StatePage.jsx
+│   │   │   │   ├── state.schema.js
+│   │   │   │   ├── state.columns.js
+│   │   │   │   └── stateService.js
+│   │   │   └── country/      # Same structure for other masters
+│   │   │
+│   │   ├── leave/
+│   │   │   ├── LeaveApplication.jsx
+│   │   │   └── leaveService.js
+│   │   │
+│   │   ├── attendance/
+│   │   ├── payroll/
+│   │   ├── training/
+│   │   └── menu/             # Menu slice for redux
+│   │       └── menuSlice.js
+│   │
+│   ├── hooks/
+│   │   └── useCrud.js        # Optional shared hooks
+│   │
+│   ├── layouts/
+│   │   └── MainLayout.jsx
+│   │
+│   ├── pages/
+│   │   └── Home.jsx
+│   │
+│   ├── services/
+│   │   └── apiClient.js      # Axios setup
+│   │
+│   ├── shared/
+│   │   └── components/       # Reusable components
+│   │       ├── MasterForm.jsx
+│   │       ├── MasterGrid.jsx
+│   │       ├── LeftPanel.jsx
+│   │       ├── Navbar.jsx
+│   │       ├── TreeMenu.jsx
+│   │       └── LogoutButton.jsx
+│   │
+│   ├── App.jsx
+│   └── index.js
+├── package.json
+└── README.md
+2. Standard Module Template (e.g., Masters / State)
+
+Each module should have 4 key files:
+
+Page Component
+Example: StatePage.jsx
+Handles useState, useEffect, fetch data, form submission, grid, dialogs.
+Service Layer
+Example: stateService.js
+All API calls in one place using apiClient (axios).
+Use try/catch in both Page and Service layer for robust error handling.
+Schema (Validation)
+Example: state.schema.js
+Use Yup for form validation.
+Columns / Grid Config
+Example: state.columns.js
+Define grid columns, formatters, actions.
+
+✅ Optional: useCrud.js hook to reduce repetition (fetch, save, update, delete) for all modules.
+
+3. Common Reusable Components
+MasterForm.jsx → Dynamic form generator (text/select/switch + validation + submit/reset buttons)
+MasterGrid.jsx → Dynamic grid (AG Grid community edition) with export CSV/Excel/PDF
+LeftPanel.jsx / TreeMenu.jsx → Sidebar navigation
+Navbar.jsx / LogoutButton.jsx → Top navigation
+4. Redux Slice Standard
+Each module does not need a slice unless you want to manage global state.
+Only menuSlice.js is required for active menu tracking.
+5. Naming Conventions
+Components → PascalCase (StatePage.jsx, MasterForm.jsx)
+Services → camelCase with module (stateService.js)
+Schema → camelCase (state.schema.js)
+Columns → camelCase (state.columns.js)
+Redux slices → moduleSlice.js
+6. Routing Standard
+// App.jsx
+<Routes>
+  <Route path="/" element={<Home />} />
+  <Route path="/masters/state" element={<StatePage />} />
+  <Route path="/masters/country" element={<CountryPage />} />
+  <Route path="/leave/application" element={<LeaveApplication />} />
+  <Route path="/payroll/salary" element={<SalarySlip />} />
+  {/* add new modules here */}
+</Routes>
+7. Recommended Workflow for New Module
+Create folder: features/moduleName/
+Add: ModulePage.jsx, moduleService.js, module.schema.js, module.columns.js
+Reuse MasterForm & MasterGrid for UI
+Add API endpoints in moduleService.js
+Add route in App.jsx
+Add menu item in LeftPanel.jsx and/or TreeMenu.jsx
+8. Benefits of This Structure
+Scalable: Easy to add new modules.
+Consistent: Juniors can follow the same pattern.
+Reusable: MasterForm & MasterGrid used across modules.
+Separation of Concerns: Page, Service, Schema, Columns clearly separated.
+Maintainable: Easy to debug, extend, or replace components.

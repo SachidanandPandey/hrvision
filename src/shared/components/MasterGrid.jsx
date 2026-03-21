@@ -74,8 +74,11 @@ const MasterGrid = forwardRef(
             ...columnDefs
           ]}
           defaultColDef={defaultColDef}
+          
           pagination
-          paginationPageSize={10}
+          paginationPageSize={20}                           // default number of rows per page
+          paginationPageSizeSelector={[10, 20, 50, 100]}   // only these options in dropdown
+          
           animateRows
           overlayLoadingTemplate={"<span>Loading...</span>"}
           loadingOverlayComponentParams={{ loadingMessage: "Loading..." }}

@@ -20,7 +20,7 @@ export const getStateColumns = (countryMap, ActionRenderer) => [
   {
     headerName: "Actions",
     cellRenderer: ActionRenderer,
-    width: 170,
+    width: 172,
     pinned: "right",
     sortable: false,
     filter: false

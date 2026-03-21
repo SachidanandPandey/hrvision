@@ -4,64 +4,175 @@ import React, {
   useMemo,
   useImperativeHandle
 } from "react";
+
 import { AgGridReact } from "ag-grid-react";
 import * as XLSX from "xlsx";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 const MasterGrid = forwardRef(
-  ({ rowData = [], columnDefs = [], loading = false, countryMap = {} }, ref) => {
+  (
+    {
+      rowData = [],
+      columnDefs = [],
+      exportFileName = "Report",
+      selectedColumns = []
+    },
+    ref
+  ) => {
     const gridApiRef = useRef(null);
 
-    const defaultColDef = useMemo(() => ({
-      sortable: true,
-      filter: true,
-      floatingFilter: true,
-      resizable: true,
-      flex: 1,
-      minWidth: 120
-    }), []);
+    const defaultColDef = useMemo(
+      () => ({
+        sortable: true,
+        filter: true,
+        floatingFilter: true,
+        resizable: true,
+        flex: 1,
+        minWidth: 120
+      }),
+      []
+    );
 
     const onGridReady = (params) => {
       gridApiRef.current = params.api;
     };
 
-    useImperativeHandle(ref, () => ({
-      exportCSV: () => {
-        gridApiRef.current?.exportDataAsCsv();
-      },
+    // ✅ File name
+    const getFileName = (type) => {
+      const date = new Date().toISOString().replace(/[:.]/g, "-");
+      return `${exportFileName}_${date}.${type}`;
+    };
 
-      exportExcel: () => {
-        const data = [];
-        gridApiRef.current?.forEachNode((node) => {
-          const d = node.data;
-          data.push({
-            ID: d.id,
-            Country: countryMap[d.countryId] || "",
-            Name: d.name,
-            Status: d.status ? "Active" : "Inactive"
-          });
+    // ✅ Get data
+    const getAllData = () => {
+      const data = [];
+      gridApiRef.current?.forEachNode((node) => {
+        data.push(node.data);
+      });
+      return data;
+    };
+
+    // ✅ Columns for export
+    const getExportColumns = () => {
+      const allCols =
+        gridApiRef.current
+          ?.getColumnDefs()
+          ?.filter((col) => col.field && col.headerName !== "#") || [];
+
+      if (!selectedColumns || selectedColumns.length === 0) {
+        return allCols;
+      }
+
+      return allCols.filter((col) =>
+        selectedColumns.includes(col.field)
+      );
+    };
+
+    useImperativeHandle(ref, () => ({
+      // ✅ CSV (CUSTOM)
+      exportCSV: () => {
+        const cols = getExportColumns();
+        const data = getAllData();
+
+        if (!data.length) return;
+
+        const headers = ["#", ...cols.map((c) => c.headerName)];
+
+        const rows = data.map((row, i) => [
+          i + 1,
+          ...cols.map((col) => {
+            let val = row[col.field];
+
+            if (col.field === "status") {
+              val = val ? "Active" : "Inactive";
+            }
+
+            if (typeof val === "string") {
+              val = `"${val.replace(/"/g, '""')}"`;
+            }
+
+            return val ?? "";
+          })
+        ]);
+
+        const csv = [
+          headers.join(","),
+          ...rows.map((r) => r.join(","))
+        ].join("\n");
+
+        const blob = new Blob([csv], {
+          type: "text/csv;charset=utf-8;"
         });
 
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "States");
-        XLSX.writeFile(wb, "states.xlsx");
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = getFileName("csv");
+        link.click();
       },
 
+      // ✅ EXCEL
+      exportExcel: () => {
+        const cols = getExportColumns();
+        const data = getAllData();
+
+        const formatted = data.map((row) => {
+          const obj = {};
+          cols.forEach((col) => {
+            let val = row[col.field];
+            if (col.field === "status") {
+              val = val ? "Active" : "Inactive";
+            }
+            obj[col.headerName] = val;
+          });
+          return obj;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(formatted);
+        const wb = XLSX.utils.book_new();
+
+        XLSX.utils.book_append_sheet(wb, ws, exportFileName);
+
+        XLSX.writeFile(wb, getFileName("xlsx"));
+      },
+
+      // ✅ PDF
+      exportPDF: () => {
+        const doc = new jsPDF();
+        const cols = getExportColumns();
+        const data = getAllData();
+
+        if (!data.length) return;
+
+        const headers = cols.map((c) => c.headerName);
+
+        const rows = data.map((row, i) => [
+          i + 1,
+          ...cols.map((col) => {
+            let val = row[col.field];
+            if (col.field === "status") {
+              val = val ? "Active" : "Inactive";
+            }
+            return val;
+          })
+        ]);
+
+        autoTable(doc, {
+          head: [["#", ...headers]],
+          body: rows
+        });
+
+        doc.save(getFileName("pdf"));
+      },
+
+      // ✅ SEARCH
       setSearch: (value) => {
         gridApiRef.current?.setGridOption("quickFilterText", value);
-      },
-
-      getData: () => {
-        const data = [];
-        gridApiRef.current?.forEachNode((node) => {
-          data.push(node.data);
-        });
-        return data;
       }
     }));
 
     return (
-      <div className="ag-theme-quartz" style={{ height: 500, width: "100%" }}>
+      <div className="ag-theme-quartz" style={{ height: 500 }}>
         <AgGridReact
           onGridReady={onGridReady}
           rowData={rowData}
@@ -74,14 +185,8 @@ const MasterGrid = forwardRef(
             ...columnDefs
           ]}
           defaultColDef={defaultColDef}
-          
           pagination
-          paginationPageSize={20}                           // default number of rows per page
-          paginationPageSizeSelector={[10, 20, 50, 100]}   // only these options in dropdown
-          
-          animateRows
-          overlayLoadingTemplate={"<span>Loading...</span>"}
-          loadingOverlayComponentParams={{ loadingMessage: "Loading..." }}
+          paginationPageSize={20}
         />
       </div>
     );

@@ -63,7 +63,8 @@ const StatePage = () => {
     data: null
   });
 
-  // ---------------- TEXT MAP ----------------
+  const isEdit = Boolean(editingId);
+
   const actionTextMap = {
     save: "Do you want to save this record?",
     update: "Do you want to update this record?",
@@ -93,7 +94,7 @@ const StatePage = () => {
   const onSubmit = (data) => {
     setConfirm({
       open: true,
-      type: editingId ? "update" : "save",
+      type: isEdit ? "update" : "save",
       data
     });
   };
@@ -240,20 +241,27 @@ const StatePage = () => {
     gridRef.current?.setSearch(e.target.value);
   };
 
+  const submitLabel = loading
+    ? ""
+    : isEdit
+    ? "Update"
+    : "Save";
+
   return (
     <Box sx={{ p: 4, background: "#f4f6f9", minHeight: "100vh" }}>
 
       <Paper sx={{ p: 3 }}>
 
         <Typography variant="h6" mb={2}>
-          {editingId ? "Edit State" : "Add State"}
+          {isEdit ? "Edit State" : "Add State"}
         </Typography>
 
         <MasterForm
-          key={editingId || "new"}
+          key={editingId || "new"}   // 🔥 IMPORTANT
           schema={stateSchema}
           defaultValues={formValues}
           onSubmit={onSubmit}
+          isEdit={isEdit}
           fields={[
             {
               name: "countryId",
@@ -273,11 +281,11 @@ const StatePage = () => {
           extraButtons={
             <Stack direction="row" spacing={2}>
               <Button variant="contained" type="submit" disabled={loading}>
-                {loading ? <CircularProgress size={20} /> : editingId ? "Update" : "Save"}
+                {loading ? <CircularProgress size={20} /> : submitLabel}
               </Button>
 
               <Button variant="outlined" onClick={handleReset}>
-                {editingId ? "Cancel" : "Reset"}
+                {isEdit ? "Cancel" : "Reset"}
               </Button>
             </Stack>
           }
@@ -300,7 +308,7 @@ const StatePage = () => {
 
       </Paper>
 
-      {/* ✅ ENTERPRISE DIALOG */}
+      {/* DIALOG */}
       <Dialog
         open={confirm.open}
         maxWidth="xs"
@@ -360,7 +368,7 @@ const StatePage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* ✅ SNACKBAR */}
+      {/* SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
@@ -376,7 +384,5 @@ const StatePage = () => {
     </Box>
   );
 };
-
-
 
 export default StatePage;

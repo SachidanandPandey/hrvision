@@ -21,7 +21,7 @@
     "axios": "^1.13.6",
     "dayjs": "^1.11.19",
     "file-saver": "^2.0.5",
-    "jspdf": "^4.2.0",
+    "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
     "react": "^19.2.4",
     "react-complex-tree": "^2.6.1",

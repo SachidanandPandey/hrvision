@@ -1,13 +1,10 @@
-import React, { forwardRef, useRef, useMemo } from "react";
+import React, { forwardRef, useRef, useMemo, useImperativeHandle } from "react";
 import { AgGridReact } from "ag-grid-react";
-
-import "ag-grid-community/styles/ag-grid.css";
-import "ag-grid-community/styles/ag-theme-quartz.css";
 
 const MasterGrid = forwardRef(
   ({ rowData = [], columnDefs = [] }, ref) => {
 
-    const gridRef = useRef();
+    const gridApiRef = useRef(null);
 
     const defaultColDef = useMemo(() => ({
       sortable: true,
@@ -19,22 +16,35 @@ const MasterGrid = forwardRef(
     }), []);
 
     const onGridReady = (params) => {
-      gridRef.current = params.api;
-      if (ref) ref.current = params.api;
+      gridApiRef.current = params.api;
       params.api.sizeColumnsToFit();
     };
 
+    useImperativeHandle(ref, () => ({
+
+      // ✅ CSV Export (FREE)
+      exportCSV: () => {
+        gridApiRef.current?.exportDataAsCsv();
+      },
+
+      // ✅ SEARCH
+      setSearch: (value) => {
+        gridApiRef.current?.setGridOption("quickFilterText", value);
+      },
+
+      // ✅ GET DATA (for Excel & PDF)
+      getData: () => {
+        const data = [];
+        gridApiRef.current?.forEachNode((node) => {
+          data.push(node.data);
+        });
+        return data;
+      }
+
+    }));
+
     return (
-
-      <div
-        className="ag-theme-quartz"
-        style={{
-          height: 500,
-          width: "100%",
-          marginTop: 10
-        }}
-      >
-
+      <div className="ag-theme-quartz" style={{ height: 500, width: "100%" }}>
         <AgGridReact
           onGridReady={onGridReady}
           rowData={rowData}
@@ -49,9 +59,9 @@ const MasterGrid = forwardRef(
           defaultColDef={defaultColDef}
           pagination
           paginationPageSize={10}
+          paginationPageSizeSelector={[10, 20, 50, 100]}
           animateRows
         />
-
       </div>
     );
   }

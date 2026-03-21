@@ -11,14 +11,19 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  CircularProgress
 } from "@mui/material";
+
+import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 import MasterForm from "../../../shared/components/MasterForm";
 import MasterGrid from "../../../shared/components/MasterGrid";
 
 import { stateSchema } from "./state.schema";
-
 import {
   getStates,
   getCountries,
@@ -36,6 +41,7 @@ const StatePage = () => {
   const [states, setStates] = useState([]);
   const [countries, setCountries] = useState([]);
   const [editingId, setEditingId] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   const emptyForm = {
     countryId: "",
@@ -45,19 +51,25 @@ const StatePage = () => {
 
   const [formValues, setFormValues] = useState(emptyForm);
 
-  // ✅ Snackbar
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
     severity: "success"
   });
 
-  // ✅ Dialog
   const [confirm, setConfirm] = useState({
     open: false,
-    type: "", // save | update | delete | reset
+    type: "",
     data: null
   });
+
+  // ---------------- TEXT MAP ----------------
+  const actionTextMap = {
+    save: "Do you want to save this record?",
+    update: "Do you want to update this record?",
+    delete: "This action cannot be undone. Delete this record?",
+    reset: "Do you want to reset the form?"
+  };
 
   // ---------------- FETCH ----------------
 
@@ -86,15 +98,16 @@ const StatePage = () => {
     });
   };
 
-  // ---------------- CONFIRM ACTION ----------------
+  // ---------------- CONFIRM ----------------
 
   const handleConfirm = async () => {
     const { type, data } = confirm;
+    setLoading(true);
 
     try {
       if (type === "save") {
         await createState({ ...data, countryId: Number(data.countryId) });
-        showMessage("State saved successfully");
+        showMessage("✔ State saved successfully");
       }
 
       if (type === "update") {
@@ -102,26 +115,27 @@ const StatePage = () => {
           ...data,
           countryId: Number(data.countryId)
         });
-        showMessage("State updated successfully");
+        showMessage("✔ State updated successfully");
       }
 
       if (type === "delete") {
         await deleteState(confirm.data);
-        showMessage("State deleted successfully");
+        showMessage("✔ State deleted successfully");
       }
 
       if (type === "reset") {
         handleReset(true);
-        showMessage("Form reset successfully");
+        showMessage("✔ Form reset successfully");
       }
 
       fetchStates();
       handleReset(true);
 
-    } catch (e) {
-      showMessage("Something went wrong", "error");
+    } catch {
+      showMessage("❌ Something went wrong", "error");
     }
 
+    setLoading(false);
     setConfirm({ open: false, type: "", data: null });
   };
 
@@ -154,7 +168,7 @@ const StatePage = () => {
     }
 
     setEditingId(null);
-    setFormValues({ ...emptyForm });
+    setFormValues(emptyForm);
   };
 
   // ---------------- DELETE ----------------
@@ -170,20 +184,11 @@ const StatePage = () => {
 
     return (
       <Stack direction="row" spacing={1}>
-        <Button
-          size="small"
-          variant="contained"
-          onClick={() => handleEdit(row)}
-        >
+        <Button size="small" variant="contained" onClick={() => handleEdit(row)}>
           Edit
         </Button>
 
-        <Button
-          size="small"
-          variant="outlined"
-          color="error"
-          onClick={() => handleDelete(row.id)}
-        >
+        <Button size="small" color="error" variant="outlined" onClick={() => handleDelete(row.id)}>
           Delete
         </Button>
       </Stack>
@@ -199,12 +204,34 @@ const StatePage = () => {
 
   const exportCSV = () => {
     gridRef.current?.exportCSV();
-    showMessage("CSV exported successfully");
   };
 
   const exportExcel = () => {
     gridRef.current?.exportExcel();
-    showMessage("Excel exported successfully");
+  };
+
+  const exportPDF = () => {
+    const doc = new jsPDF();
+    const data = gridRef.current?.getData() || [];
+
+    const countryMap = {};
+    countries.forEach(c => {
+      countryMap[c.countryId] = c.name;
+    });
+
+    const rows = data.map((d, i) => [
+      i + 1,
+      countryMap[d.countryId] || "",
+      d.name,
+      d.status ? "Active" : "Inactive"
+    ]);
+
+    autoTable(doc, {
+      head: [["#", "Country", "State", "Status"]],
+      body: rows
+    });
+
+    doc.save("states.pdf");
   };
 
   // ---------------- SEARCH ----------------
@@ -213,22 +240,10 @@ const StatePage = () => {
     gridRef.current?.setSearch(e.target.value);
   };
 
-  // ---------------- CONFIRM TEXT ----------------
-
-  const confirmText = {
-    save: "Are you sure you want to save this state?",
-    update: "Are you sure you want to update this state?",
-    delete: "Are you sure you want to delete this state?",
-    reset: "Are you sure you want to reset the form?"
-  };
-
   return (
-
     <Box sx={{ p: 4, background: "#f4f6f9", minHeight: "100vh" }}>
 
       <Paper sx={{ p: 3 }}>
-
-        {/* FORM */}
 
         <Typography variant="h6" mb={2}>
           {editingId ? "Edit State" : "Add State"}
@@ -257,89 +272,101 @@ const StatePage = () => {
           ]}
           extraButtons={
             <Stack direction="row" spacing={2}>
-              {editingId ? (
-                <>
-                  <Button variant="contained" type="submit">
-                    Update
-                  </Button>
+              <Button variant="contained" type="submit" disabled={loading}>
+                {loading ? <CircularProgress size={20} /> : editingId ? "Update" : "Save"}
+              </Button>
 
-                  <Button variant="outlined" onClick={handleReset}>
-                    Cancel
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button variant="contained" type="submit">
-                    Save
-                  </Button>
-
-                  <Button variant="outlined" onClick={handleReset}>
-                    Reset
-                  </Button>
-                </>
-              )}
+              <Button variant="outlined" onClick={handleReset}>
+                {editingId ? "Cancel" : "Reset"}
+              </Button>
             </Stack>
           }
         />
 
         {/* GRID HEADER */}
-
         <Box mt={4} display="flex" justifyContent="space-between">
           <Typography variant="h6">State List</Typography>
 
           <Stack direction="row" spacing={2}>
-            <TextField
-              size="small"
-              placeholder="Search..."
-              onChange={onSearch}
-            />
+            <TextField size="small" placeholder="Search..." onChange={onSearch} />
 
-            <Button variant="outlined" onClick={exportCSV}>
-              Export CSV
-            </Button>
-
-            <Button variant="outlined" onClick={exportExcel}>
-              Export Excel
-            </Button>
+            <Button onClick={exportCSV}>CSV</Button>
+            <Button onClick={exportExcel}>Excel</Button>
+            <Button onClick={exportPDF}>PDF</Button>
           </Stack>
         </Box>
 
-        {/* GRID */}
-
-        <MasterGrid
-          ref={gridRef}
-          rowData={states}
-          columnDefs={columnDefs}
-        />
+        <MasterGrid ref={gridRef} rowData={states} columnDefs={columnDefs} />
 
       </Paper>
 
-      {/* CONFIRM DIALOG */}
-
-      <Dialog open={confirm.open}>
-        <DialogTitle>Confirm Action</DialogTitle>
+      {/* ✅ ENTERPRISE DIALOG */}
+      <Dialog
+        open={confirm.open}
+        maxWidth="xs"
+        fullWidth
+        onClose={() =>
+          !loading && setConfirm({ open: false, type: "", data: null })
+        }
+        PaperProps={{
+          sx: { borderRadius: 3, p: 1 }
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 600 }}>
+          Confirm Action
+        </DialogTitle>
 
         <DialogContent>
-          {confirmText[confirm.type]}
+          <Box display="flex" alignItems="center" gap={1}>
+            {confirm.type === "delete" && (
+              <WarningAmberIcon color="error" />
+            )}
+
+            <Typography>
+              {actionTextMap[confirm.type]}
+            </Typography>
+          </Box>
         </DialogContent>
 
-        <DialogActions>
-          <Button onClick={() => setConfirm({ open: false })}>
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button
+            variant="outlined"
+            onClick={() =>
+              setConfirm({ open: false, type: "", data: null })
+            }
+            disabled={loading}
+          >
             Cancel
           </Button>
 
-          <Button variant="contained" onClick={handleConfirm}>
-            Yes
+          <Button
+            variant="contained"
+            color={confirm.type === "delete" ? "error" : "primary"}
+            onClick={handleConfirm}
+            disabled={loading}
+          >
+            {loading ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : confirm.type === "delete" ? (
+              "Delete"
+            ) : confirm.type === "update" ? (
+              "Update"
+            ) : confirm.type === "save" ? (
+              "Save"
+            ) : (
+              "Yes"
+            )}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* SNACKBAR */}
-
+      {/* ✅ SNACKBAR */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={3000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        onClose={() =>
+          setSnackbar((prev) => ({ ...prev, open: false }))
+        }
       >
         <Alert severity={snackbar.severity}>
           {snackbar.message}

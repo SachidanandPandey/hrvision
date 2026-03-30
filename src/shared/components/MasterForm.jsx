@@ -76,7 +76,6 @@ const MasterForm = ({
               ) : field.type === "select" ? (
 
                 /* SELECT FIELD */
-
                 <Controller
                   name={field.name}
                   control={control}
@@ -102,7 +101,6 @@ const MasterForm = ({
               ) : (
 
                 /* TEXT FIELD */
-
                 <TextField
                   label={field.label}
                   type={field.type || "text"}
@@ -111,13 +109,21 @@ const MasterForm = ({
                   error={!!errors[field.name]}
                   helperText={errors[field.name]?.message}
                   disabled={loading}
+                  inputProps={field.inputProps || {}}
+                  onInput={(e) => {
+                    if (field.numericOnly) {
+                      e.target.value = e.target.value.replace(/\D/g, "");
+                    }
+                    if (field.maxLength) {
+                      e.target.value = e.target.value.slice(0, field.maxLength);
+                    }
+                  }}
                 />
               )}
             </Grid>
           ))}
 
           {/* BUTTONS */}
-
           <Grid size={{ xs: 12 }} sx={{ mt: 3, display: "flex", gap: 2 }}>
 
             <Button

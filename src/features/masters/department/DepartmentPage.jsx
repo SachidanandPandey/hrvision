@@ -21,16 +21,20 @@ import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import MasterForm from "../../../shared/components/MasterForm";
 import MasterGrid from "../../../shared/components/MasterGrid";
 
-import { citySchema } from "./city.schema";
-import { getCities, getStates, createCity, updateCity, deleteCity } from "./cityService";
+import { departmentSchema } from "./department.schema";
+import {
+  getDepartments,
+  createDepartment,
+  updateDepartment,
+  deleteDepartment
+} from "./departmentService";
 
-import { getCityColumns } from "./city.columns";
+import { getDepartmentColumns } from "./department.columns";
 
-const CityPage = () => {
+const DepartmentPage = () => {
   const gridRef = useRef(null);
 
-  const [cities, setCities] = useState([]);
-  const [states, setStates] = useState([]);
+  const [departments, setDepartments] = useState([]);
   const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -44,38 +48,21 @@ const CityPage = () => {
 
   const isEdit = Boolean(editingId);
 
-  const emptyForm = { name: "", zipCode: "", stateId: null, isMetro: false, status: true };
+  const emptyForm = { name: "", status: true };
   const [formValues, setFormValues] = useState(emptyForm);
 
-  // ---------------- STATE MAP ----------------
-  const stateMap = useMemo(() => {
-    const map = {};
-    states.forEach((s) => (map[s.id] = s.name));
-    return map;
-  }, [states]);
-
   // ---------------- FETCH ----------------
-  const fetchCities = async () => {
+  const fetchDepartments = async () => {
     try {
-      const res = await getCities();
-      setCities(res.data || []);
+      const res = await getDepartments();
+      setDepartments(res.data || []);
     } catch {
-      showMessage("Failed to load cities", "error");
-    }
-  };
-
-  const fetchStates = async () => {
-    try {
-      const res = await getStates();
-      setStates(res.data || []);
-    } catch {
-      showMessage("Failed to load states", "error");
+      showMessage("Failed to load departments", "error");
     }
   };
 
   useEffect(() => {
-    fetchCities();
-    fetchStates();
+    fetchDepartments();
   }, []);
 
   // ---------------- ACTION ----------------
@@ -85,14 +72,16 @@ const CityPage = () => {
       return (
         <Stack direction="row" spacing={1}>
           <Button size="small" onClick={() => handleEdit(row)}>Edit</Button>
-          <Button size="small" color="error" onClick={() => handleDelete(row.id)}>Delete</Button>
+          <Button size="small" color="error" onClick={() => handleDelete(row.departmentId)}>
+            Delete
+          </Button>
         </Stack>
       );
     },
     []
   );
 
-  const columnDefs = useMemo(() => getCityColumns(stateMap, ActionRenderer), [stateMap, ActionRenderer]);
+  const columnDefs = useMemo(() => getDepartmentColumns(ActionRenderer), [ActionRenderer]);
 
   useEffect(() => {
     setSelectedCols(columnDefs.filter((c) => c.field).map((c) => c.field));
@@ -105,22 +94,22 @@ const CityPage = () => {
 
     try {
       if (type === "save") {
-        await createCity({ ...data, stateId: Number(data.stateId) });
-        showMessage("✔ City saved successfully");
+        await createDepartment(data);
+        showMessage("✔ Department saved successfully");
       }
       if (type === "update") {
-        await updateCity(editingId, { ...data, stateId: Number(data.stateId) });
-        showMessage("✔ City updated successfully");
+        await updateDepartment(editingId, data);
+        showMessage("✔ Department updated successfully");
       }
       if (type === "delete") {
-        await deleteCity(data);
-        showMessage("✔ City deleted successfully");
+        await deleteDepartment(data);
+        showMessage("✔ Department deleted successfully");
       }
       if (type === "reset") {
         handleReset(true);
       }
 
-      await fetchCities();
+      await fetchDepartments();
 
       if (type === "save" || type === "update") {
         handleReset(true);
@@ -135,63 +124,51 @@ const CityPage = () => {
   };
 
   // ---------------- SUBMIT ----------------
- const onSubmit = (data) => {
-  try {
-    // ✅ Normalize input
-    const normalizedName = data.name.trim().toLowerCase();
-    const normalizedZip = data.zipCode.toString().trim();
+  const onSubmit = (data) => {
+    try {
+      const normalizedName = data.name.trim().toLowerCase();
 
-    const isDuplicate = cities.some((c) => {
-      const cityName = c.name?.toString().trim().toLowerCase();
-      const zip = c.zipCode?.toString().trim();
+      const isDuplicate = departments.some((d) => {
+        const deptName = d.name?.toLowerCase();
 
-      // ✅ UPDATE case → ignore same record
-      if (editingId !== null && editingId !== undefined) {
-        return (
-          cityName === normalizedName &&
-          zip === normalizedZip &&
-          Number(c.id) !== Number(editingId)
-        );
+        if (editingId) {
+          return deptName === normalizedName && d.departmentId !== editingId;
+        }
+
+        return deptName === normalizedName;
+      });
+
+      if (isDuplicate) {
+        throw new Error("Department already exists");
       }
 
-      // ✅ SAVE case
-      return cityName === normalizedName && zip === normalizedZip;
-    });
+      const sanitized = {
+        ...data,
+        name: data.name.trim(),
+      };
 
-    if (isDuplicate) {
-      throw new Error("City name with this Zip code already exists");
+      setConfirm({
+        open: true,
+        type: isEdit ? "update" : "save",
+        data: sanitized
+      });
+
+    } catch (err) {
+      showMessage(`❌ ${err.message}`, "error");
     }
+  };
 
-    // ✅ send clean data (original format)
-    const sanitized = {
-      ...data,
-      name: data.name.trim(),
-      zipCode: normalizedZip
-    };
-
-    setConfirm({
-      open: true,
-      type: isEdit ? "update" : "save",
-      data: sanitized
-    });
-
-  } catch (err) {
-    showMessage(`❌ ${err.message}`, "error");
-  }
-};
   const handleEdit = (row) => {
-    setEditingId(Number(row.id)); // ✅ FIX
+    setEditingId(row.departmentId);
     setFormValues({
       name: row.name,
-      zipCode: row.zipCode,
-      stateId: row.stateId,
-      isMetro: row.isMetro,
       status: row.status
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleDelete = (id) => setConfirm({ open: true, type: "delete", data: id });
+  const handleDelete = (id) =>
+    setConfirm({ open: true, type: "delete", data: id });
 
   const handleReset = (force = false) => {
     if (!force) {
@@ -217,46 +194,25 @@ const CityPage = () => {
     <Box sx={{ p: 4, background: "#f4f6f9", minHeight: "100vh" }}>
       <Paper sx={{ p: 3 }}>
         <Typography variant="h6" mb={2}>
-          {isEdit ? "Edit City" : "Add City"}
+          {isEdit ? "Edit Department" : "Add Department"}
         </Typography>
 
         <MasterForm
           key={editingId || "new"}
-          schema={citySchema}
+          schema={departmentSchema}
           defaultValues={formValues}
           onSubmit={onSubmit}
           isUpdate={isEdit}
           loading={loading}
           fields={[
-            { name: "name", label: "City Name", type: "text" },
-
-            {
-              name: "zipCode",
-              label: "Zip Code",
-              type: "text",
-              numericOnly: true,
-              maxLength: 6,
-              inputProps: { maxLength: 6 }
-            },
-
-            {
-              name: "stateId",
-              label: "State",
-              type: "select",
-              options: states.map((s) => ({
-                value: s.id,
-                label: s.name
-              }))
-            },
-            { name: "isMetro", label: "Metro", type: "switch" },
+            { name: "name", label: "Department Name", type: "text" },
             { name: "status", label: "Active", type: "switch" }
           ]}
-          submitLabel="Save"
-          updateLabel="Update"
         />
 
         <Box mt={4} display="flex" justifyContent="space-between">
-          <Typography variant="h6">City List</Typography>
+          <Typography variant="h6">Department List</Typography>
+
           <Stack direction="row" spacing={2}>
             <TextField
               size="small"
@@ -272,40 +228,15 @@ const CityPage = () => {
 
         <MasterGrid
           ref={gridRef}
-          rowData={cities}
+          rowData={departments}
           columnDefs={columnDefs}
-          exportFileName="City"
+          exportFileName="Department"
           selectedColumns={selectedCols}
         />
       </Paper>
 
-      {/* Column Dialog */}
-      <Dialog open={colDialog} onClose={() => setColDialog(false)}>
-        <DialogTitle>Select Columns</DialogTitle>
-        <DialogContent>
-          {columnDefs.filter((c) => c.field).map((col) => (
-            <Box key={col.field}>
-              <input
-                type="checkbox"
-                checked={selectedCols.includes(col.field)}
-                onChange={(e) => {
-                  if (e.target.checked)
-                    setSelectedCols([...selectedCols, col.field]);
-                  else
-                    setSelectedCols(selectedCols.filter((c) => c !== col.field));
-                }}
-              />
-              {col.headerName}
-            </Box>
-          ))}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setColDialog(false)}>Close</Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Confirm Dialog */}
-      <Dialog open={confirm.open} maxWidth="xs" fullWidth>
+      <Dialog open={confirm.open}>
         <DialogTitle>Confirm Action</DialogTitle>
         <DialogContent>
           <Box display="flex" alignItems="center" gap={1.5}>
@@ -317,22 +248,14 @@ const CityPage = () => {
                 ? "Update this record?"
                 : confirm.type === "save"
                 ? "Save this record?"
-                : "Reset the form?"}
+                : "Reset form?"}
             </Typography>
           </Box>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setConfirm({ open: false })}>Cancel</Button>
           <Button onClick={handleConfirm} disabled={loading}>
-            {loading ? (
-              <CircularProgress size={20} />
-            ) : confirm.type === "delete" ? (
-              "Delete"
-            ) : confirm.type === "update" ? (
-              "Update"
-            ) : (
-              "Save"
-            )}
+            {loading ? <CircularProgress size={20} /> : "Confirm"}
           </Button>
         </DialogActions>
       </Dialog>
@@ -349,4 +272,4 @@ const CityPage = () => {
   );
 };
 
-export default CityPage;
+export default DepartmentPage;

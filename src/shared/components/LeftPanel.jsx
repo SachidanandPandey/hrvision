@@ -1,10 +1,10 @@
-// src/shared/components/LeftPanel.jsx
 import React, { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { setActiveMenu } from '../../features/menu/menuSlice';
 import MenuItem from './MenuItem';
-import LogoutButton from './LogoutButton';
-import { Box, Typography, Divider } from '@mui/material'; // ← FIXED: combined import
+import { Box, Typography } from '@mui/material';
+
+const drawerWidth = 280;
 
 const LeftPanel = () => {
   const dispatch = useDispatch();
@@ -12,7 +12,21 @@ const LeftPanel = () => {
 
   const [menus] = useState([
     { menu: 'Dashboard', subMenus: [] },
-    { menu: 'Masters', subMenus: ['State', 'Employee', 'Company', 'Tax','Country','City','Department','Designation','Division','EmployeeGrade'] },
+    {
+      menu: 'Masters',
+      subMenus: [
+        'State',
+        'Employee',
+        'Company',
+        'Tax',
+        'Country',
+        'City',
+        'Department',
+        'Designation',
+        'Division',
+        'EmployeeGrade',
+      ],
+    },
     { menu: 'Leave', subMenus: ['Leave Application', 'Leave Balance'] },
     { menu: 'Payroll', subMenus: ['Salary Slip', 'Payslip Report'] },
     { menu: 'Vendor Portal', subMenus: ['Dashboard', 'Invoices'] },
@@ -26,7 +40,10 @@ const LeftPanel = () => {
   return (
     <Box
       sx={{
-        width: 280,
+        width: `${drawerWidth}px`,
+        position: 'fixed',   // ✅ KEY FIX
+        top: 0,
+        left: 0,
         height: '100vh',
         bgcolor: '#f8f9fa',
         borderRight: '1px solid #e0e0e0',
@@ -34,7 +51,10 @@ const LeftPanel = () => {
         p: 2,
       }}
     >
-      <Typography variant="h6" sx={{ mb: 3, fontWeight: 'bold', color: '#1976d2' }}>
+      <Typography
+        variant="h6"
+        sx={{ mb: 3, fontWeight: 'bold', color: '#1976d2' }}
+      >
         HRVision
       </Typography>
 

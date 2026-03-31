@@ -1,31 +1,54 @@
-// src/layouts/MainLayout.jsx
 import React from 'react';
 import { Box, AppBar, Toolbar, Typography } from '@mui/material';
 import LeftPanel from '../shared/components/LeftPanel';
 import LogoutButton from '../shared/components/LogoutButton';
 
+const drawerWidth = 280;
+const headerHeight = 64;
+
 const MainLayout = ({ children }) => {
   return (
-    <Box sx={{ display: 'flex', height: '100vh' }}>
-      {/* Left Sidebar */}
+    <Box sx={{ display: 'flex' }}>
+      
+      {/* ✅ FIXED SIDEBAR */}
       <LeftPanel />
 
-      {/* Right Side */}
-      <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
-        {/* Top Header with Logout */}
-        <AppBar position="static" sx={{ bgcolor: '#1976d2' }}>
+      {/* RIGHT SIDE */}
+      <Box
+        sx={{
+          flexGrow: 1,
+          ml: `${drawerWidth}px`, // ✅ push content right
+        }}
+      >
+        {/* ✅ FIXED HEADER */}
+        <AppBar
+          position="fixed"
+          sx={{
+            width: `calc(100% - ${drawerWidth}px)`,
+            ml: `${drawerWidth}px`,
+            bgcolor: '#1976d2',
+          }}
+        >
           <Toolbar sx={{ justifyContent: 'space-between' }}>
-            <Typography variant="h6" component="div">
+            <Typography variant="h6">
               HRVision ERP
             </Typography>
 
-            {/* Logout on right */}
             <LogoutButton variant="contained" size="medium" />
           </Toolbar>
         </AppBar>
 
-        {/* Main Content */}
-        <Box component="main" sx={{ flexGrow: 1, p: 3, overflowY: 'auto' }}>
+        {/* ✅ CONTENT AREA */}
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            p: 3,
+            overflowY: 'auto',
+            background: '#f4f6f9',
+            height: 'calc(100vh - 64px)', // header height adjust
+          }}
+        >
           {children}
         </Box>
       </Box>

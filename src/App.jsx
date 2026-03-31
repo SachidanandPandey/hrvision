@@ -8,6 +8,7 @@ import StatePage from './features/masters/state/StatePage';
 import CityPage from './features/masters/city/CityPage';
 import CountryPage from './features/masters/country/CountryPage';
 import DepartmentPage from "./features/masters/department/DepartmentPage";
+import DesignationPage from "./features/masters/designation/DesignationPage";
 /*
 import CountryMaster from './features/masters/countryMaster';
 import CityMaster from './features/masters/CityMaster';
@@ -30,6 +31,7 @@ const App = () => {
             <Route path="/masters/city" element={<CityPage />} />
              <Route path="/masters/country" element={<CountryPage />} />
              <Route path="/masters/department" element={<DepartmentPage />} />
+               <Route path="/masters/designation" element={<DesignationPage />} />
              
            
          
